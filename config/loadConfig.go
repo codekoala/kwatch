@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -49,6 +50,22 @@ func LoadConfig() (*Config, error) {
 	// Parse proxy config
 	if len(config.App.ProxyURL) > 0 {
 		os.Setenv("HTTPS_PROXY", config.App.ProxyURL)
+	}
+
+	// Parse rules for ignoring pods
+	for _, rule := range config.IgnorePodLabels {
+		if len(rule.Value) > 0 && len(rule.ValueRegex) > 0 {
+			logrus.Error("Either value or valueRegex must be set to ignore pod labels, but not both")
+		} else if len(rule.Value) == 0 && len(rule.ValueRegex) == 0 {
+			logrus.Error("Either value or valueRegex must be set to ignore pod labels")
+		}
+
+		if rule.ValueRegex != "" {
+			rule.Matcher, err = regexp.Compile(rule.ValueRegex)
+			if err != nil {
+				logrus.Error("Failed to compile regex %q: %s", rule.ValueRegex, err)
+			}
+		}
 	}
 
 	return config, nil

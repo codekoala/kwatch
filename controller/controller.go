@@ -139,8 +139,39 @@ func (c *Controller) processItem(key string) error {
 	return nil
 }
 
+func (c *Controller) shouldInspectPod(pod *v1.Pod) bool {
+	// short circuit if no labels to ignore have been configured
+	if c.config.IgnorePodLabels == nil {
+		return true
+	}
+
+	for _, rule := range c.config.IgnorePodLabels {
+		for label, value := range pod.ObjectMeta.Labels {
+			if label != rule.Label {
+				continue
+			}
+
+			// if the label value matches the rule, we should NOT inspect the pod
+			if len(rule.Value) > 0 && value == rule.Value {
+				return false
+			}
+
+			if rule.Matcher != nil && rule.Matcher.MatchString(value) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 // processPod checks status of pod and notify in abnormal cases
 func (c *Controller) processPod(key string, pod *v1.Pod) {
+	if !c.shouldInspectPod(pod) {
+		// proceed to next pod
+		return
+	}
+
 	for _, container := range pod.Status.ContainerStatuses {
 		// filter running containers
 		if container.Ready ||
