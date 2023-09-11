@@ -156,7 +156,7 @@ func (c *Controller) shouldInspectPod(pod *v1.Pod) bool {
 				return false
 			}
 
-			if rule.Matcher != nil && rule.Matcher.MatchString(value) {
+			if re := rule.Matcher(); re != nil && re.MatchString(value) {
 				return false
 			}
 		}

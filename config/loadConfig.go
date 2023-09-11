@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -54,17 +53,9 @@ func LoadConfig() (*Config, error) {
 
 	// Parse rules for ignoring pods
 	for _, rule := range config.IgnorePodLabels {
-		if len(rule.Value) > 0 && len(rule.ValueRegex) > 0 {
-			logrus.Error("Either value or valueRegex must be set to ignore pod labels, but not both")
-		} else if len(rule.Value) == 0 && len(rule.ValueRegex) == 0 {
-			logrus.Error("Either value or valueRegex must be set to ignore pod labels")
-		}
-
-		if rule.ValueRegex != "" {
-			rule.Matcher, err = regexp.Compile(rule.ValueRegex)
-			if err != nil {
-				logrus.Error("Failed to compile regex %q: %s", rule.ValueRegex, err)
-			}
+		if err = rule.IsValid(); err != nil {
+			logrus.Errorf("Invalid ignorePodLabels rule: %s", err)
+			return nil, err
 		}
 	}
 

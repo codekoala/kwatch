@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"regexp"
 )
 
@@ -39,12 +40,7 @@ type Config struct {
 	IgnoreContainerNames []string `yaml:"ignoreContainerNames"`
 
 	// IgnorePodLabels is an optional list of labels to help exclude pods
-	IgnorePodLabels []struct{
-		Label string `yaml:"label"`
-		Value string `yaml:"value"`
-		ValueRegex string `yaml:"valueRegex"`
-		Matcher *regexp.Regexp
-	}
+	IgnorePodLabels []IgnorePodLabelRule `yaml:"ignorePodLabels"`
 
 	// Alert is a map contains a map of each provider configuration
 	// e.g. {"slack": {"webhook": "URL"}}
@@ -97,4 +93,46 @@ type PvcMonitor struct {
 	// exceeds this value, it will send a notification.
 	// By default, this value is 80
 	Threshold float64 `yaml:"threshold"`
+}
+
+// IgnorePodLabelRule config struct
+type IgnorePodLabelRule struct {
+	// Label is the value of the label to inspect.
+	Label string `yaml:"label"`
+
+	// Value is an exact string to match to identify pods to ignore.
+	Value string `yaml:"value"`
+
+	// ValueRegex is a regular expression to use to identify pods to ignore. Takes precedence over Value if both are supplied.
+	ValueRegex string `yaml:"valueRegex"`
+
+	matcher *regexp.Regexp
+}
+
+// IsValid determines whether the rule appears to be well-formed.
+func (r *IgnorePodLabelRule) IsValid() error {
+	if len(r.Label) == 0 {
+		return fmt.Errorf("No label supplied: %#v", r)
+	}
+
+	if len(r.Value) == 0 && len(r.ValueRegex) == 0 {
+		return fmt.Errorf("No value or valueRegex supplied: %#v", r)
+	}
+
+	if len(r.ValueRegex) > 0 {
+		if r.Matcher() == nil {
+			return fmt.Errorf("Invalid regex: %q", r.ValueRegex)
+		}
+	}
+
+	return nil
+}
+
+// Matcher returns a compiled regular expression to use for matching if the rule is configured as such
+func (r *IgnorePodLabelRule) Matcher() *regexp.Regexp {
+	if len(r.ValueRegex) > 0 && r.matcher == nil {
+		r.matcher = regexp.MustCompile(r.ValueRegex)
+	}
+
+	return r.matcher
 }

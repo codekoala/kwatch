@@ -77,6 +77,16 @@ func TestConfigFromFile(t *testing.T) {
 			ProxyURL:    "https://localhost",
 			ClusterName: "development",
 		},
+		IgnorePodLabels: []IgnorePodLabelRule{
+			{
+				Label: "testing.io/label",
+				Value: "test",
+			},
+			{
+				Label: "testing.io/label",
+				ValueRegex: "test.*",
+			},
+		},
 	}
 	yamlData, _ := yaml.Marshal(&n)
 	os.WriteFile("config.yaml", yamlData, 0644)
@@ -92,6 +102,7 @@ func TestConfigFromFile(t *testing.T) {
 	assert.Len(cfg.AllowedReasons, 1)
 	assert.Len(cfg.ForbiddenNamespaces, 1)
 	assert.Len(cfg.ForbiddenReasons, 1)
+	assert.Len(cfg.IgnorePodLabels, 2)
 
 	os.WriteFile("config.yaml", []byte("maxRecentLogLines: test"), 0644)
 	_, err := LoadConfig()

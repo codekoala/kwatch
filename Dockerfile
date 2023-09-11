@@ -12,6 +12,9 @@ COPY go.mod go.sum /build/
 RUN go mod download
 
 COPY . /build/
+
+RUN go test ./...
+
 RUN sed -i 's/dev/'"${RELEASE_VERSION}"'/g' version/version.go
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kwatch .
 
